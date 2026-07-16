@@ -1,0 +1,17 @@
+{
+    "name": "omnissolutio/payment-gateway",
+    "description": "Omnis Solutio payment gateway checkout integration for Magento 2.",
+    "type": "magento2-module",
+    "license": "MIT",
+    "require": {
+        "php": "~8.3.0||~8.4.0",
+        "magento/framework": "*"
+    },
+    "autoload": {
+        "files": ["registration.php"],
+        "psr-4": {
+            "OmnisSolutio\\PaymentGateway\\": ""
+        }
+    },
+    "version": "1.0.0"
+}
