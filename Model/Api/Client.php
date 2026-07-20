@@ -40,7 +40,7 @@ class Client
 
         $this->curl->setHeaders([
             'Content-Type'  => 'application/json',
-            'Authorization' => 'Bearer ' . $this->config->getApiKey($storeId),
+            'Authorization' => 'Bearer ' . $this->config->getKeyId($storeId),
             'Accept'        => 'application/json',
         ]);
 

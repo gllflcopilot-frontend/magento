@@ -25,7 +25,7 @@ class PaymentMethod extends AbstractMethod
 
     public function isAvailable(CartInterface $quote = null): bool
     {
-        if (!$this->getConfigData('api_key') || !$this->getConfigData('api_secret')) {
+        if (!$this->getConfigData('key_id') || !$this->getConfigData('key_secret')) {
             return false;
         }
 

@@ -27,13 +27,18 @@ class Config
         );
     }
 
-    public function isSandbox(int $storeId = null): bool
+    public function getEnvironment(int $storeId = null): string
     {
-        return $this->scopeConfig->isSetFlag(
-            self::XML_PATH_PREFIX . 'sandbox_mode',
+        return (string) $this->scopeConfig->getValue(
+            self::XML_PATH_PREFIX . 'environment',
             ScopeInterface::SCOPE_STORE,
             $storeId
         );
+    }
+
+    public function isSandbox(int $storeId = null): bool
+    {
+        return $this->getEnvironment($storeId) !== 'live';
     }
 
     public function isDebug(int $storeId = null): bool
@@ -45,19 +50,28 @@ class Config
         );
     }
 
-    public function getApiKey(int $storeId = null): string
+    public function getKeyId(int $storeId = null): string
     {
         return (string) $this->scopeConfig->getValue(
-            self::XML_PATH_PREFIX . 'api_key',
+            self::XML_PATH_PREFIX . 'key_id',
             ScopeInterface::SCOPE_STORE,
             $storeId
         );
     }
 
-    public function getApiSecret(int $storeId = null): string
+    public function getKeySecret(int $storeId = null): string
     {
         return (string) $this->scopeConfig->getValue(
-            self::XML_PATH_PREFIX . 'api_secret',
+            self::XML_PATH_PREFIX . 'key_secret',
+            ScopeInterface::SCOPE_STORE,
+            $storeId
+        );
+    }
+
+    public function getWebhookSecret(int $storeId = null): string
+    {
+        return (string) $this->scopeConfig->getValue(
+            self::XML_PATH_PREFIX . 'webhook_secret',
             ScopeInterface::SCOPE_STORE,
             $storeId
         );
