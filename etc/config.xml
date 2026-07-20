@@ -6,7 +6,7 @@
             <omnissolutio_gateway>
                 <active>0</active>
                 <title>Omnis Solutio</title>
-                <model>OmnisSolutio\PaymentGateway\Model\PaymentMethod</model>
+                <model>OmnisSolutioPaymentGatewayFacade</model>
                 <environment>sandbox</environment>
                 <payment_action>authorize_capture</payment_action>
                 <order_status>processing</order_status>

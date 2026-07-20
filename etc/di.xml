@@ -2,6 +2,184 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
 
+    <!--
+    =========================================================
+    GATEWAY CONFIG
+    Reads payment/omnissolutio_gateway/* from ScopeConfig.
+    =========================================================
+    -->
+    <virtualType name="OmnisSolutioPaymentGatewayConfig"
+                 type="OmnisSolutio\PaymentGateway\Gateway\Config\Config">
+        <arguments>
+            <argument name="methodCode" xsi:type="const">
+                OmnisSolutio\PaymentGateway\Gateway\Config\Config::METHOD_CODE
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!--
+    =========================================================
+    VALUE HANDLER POOL
+    Serves config values to the Facade (can_refund, active, …).
+    =========================================================
+    -->
+    <virtualType name="OmnisSolutioPaymentGatewayDefaultValueHandler"
+                 type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">OmnisSolutioPaymentGatewayConfig</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="OmnisSolutioPaymentGatewayValueHandlerPool"
+                 type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="default" xsi:type="string">OmnisSolutioPaymentGatewayDefaultValueHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!--
+    =========================================================
+    COMMANDS
+    =========================================================
+    -->
+
+    <!-- initialize: POST /orders — creates the gateway order before the iframe opens.
+         Called directly from Controller/Order/Create (Phase D); also available via the
+         Adapter::initialize() path for authorize-only flows. -->
+    <virtualType name="OmnisSolutioPaymentGatewayInitializeCommand"
+                 type="Magento\Payment\Gateway\Command\GatewayCommand">
+        <arguments>
+            <argument name="requestBuilder" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Request\InitializeRequestBuilder
+            </argument>
+            <argument name="transferFactory" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Http\TransferFactory
+            </argument>
+            <argument name="client" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Http\Client\ApiClient
+            </argument>
+            <argument name="validator" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Validator\ResponseValidator
+            </argument>
+            <argument name="handler" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Response\InitializeHandler
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!-- capture: GET /payments/{id} — server-side re-verification after iframe completes.
+         The payment was already captured in the iframe; this command fetches the payment
+         object, validates amount/currency, and records last_trans_id.
+         Requires additional_information[omnissolutio_payment_id] pre-set by the callback
+         controller (Phase D). -->
+    <virtualType name="OmnisSolutioPaymentGatewayCaptureCommand"
+                 type="Magento\Payment\Gateway\Command\GatewayCommand">
+        <arguments>
+            <argument name="requestBuilder" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Request\CaptureRequestBuilder
+            </argument>
+            <argument name="transferFactory" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Http\TransferFactory
+            </argument>
+            <argument name="client" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Http\Client\ApiClient
+            </argument>
+            <argument name="validator" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Validator\ResponseValidator
+            </argument>
+            <argument name="handler" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Response\CaptureHandler
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!-- refund: POST /payments/{id}/refund — online credit memo path (Phase F). -->
+    <virtualType name="OmnisSolutioPaymentGatewayRefundCommand"
+                 type="Magento\Payment\Gateway\Command\GatewayCommand">
+        <arguments>
+            <argument name="requestBuilder" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Request\RefundRequestBuilder
+            </argument>
+            <argument name="transferFactory" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Http\TransferFactory
+            </argument>
+            <argument name="client" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Http\Client\ApiClient
+            </argument>
+            <argument name="validator" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Validator\ResponseValidator
+            </argument>
+            <argument name="handler" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Response\RefundHandler
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!-- void/cancel: POST /orders/{gateway_order_id}/cancel — cancels an unpaid gateway
+         order when the customer dismisses the modal or the Magento order is cancelled. -->
+    <virtualType name="OmnisSolutioPaymentGatewayVoidCommand"
+                 type="Magento\Payment\Gateway\Command\GatewayCommand">
+        <arguments>
+            <argument name="requestBuilder" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Request\VoidRequestBuilder
+            </argument>
+            <argument name="transferFactory" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Http\TransferFactory
+            </argument>
+            <argument name="client" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Http\Client\ApiClient
+            </argument>
+            <argument name="validator" xsi:type="object">
+                OmnisSolutio\PaymentGateway\Gateway\Validator\ResponseValidator
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!--
+    =========================================================
+    COMMAND POOL
+    =========================================================
+    -->
+    <virtualType name="OmnisSolutioPaymentGatewayCommandPool"
+                 type="Magento\Payment\Gateway\Command\CommandPool">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="initialize" xsi:type="string">OmnisSolutioPaymentGatewayInitializeCommand</item>
+                <item name="capture"    xsi:type="string">OmnisSolutioPaymentGatewayCaptureCommand</item>
+                <item name="refund"     xsi:type="string">OmnisSolutioPaymentGatewayRefundCommand</item>
+                <item name="void"       xsi:type="string">OmnisSolutioPaymentGatewayVoidCommand</item>
+                <item name="cancel"     xsi:type="string">OmnisSolutioPaymentGatewayVoidCommand</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!--
+    =========================================================
+    FACADE
+    The concrete payment method Magento registers and calls.
+    config.xml <model> must match this virtual type name.
+    =========================================================
+    -->
+    <virtualType name="OmnisSolutioPaymentGatewayFacade"
+                 type="Magento\Payment\Model\Method\Adapter">
+        <arguments>
+            <argument name="code" xsi:type="const">
+                OmnisSolutio\PaymentGateway\Gateway\Config\Config::METHOD_CODE
+            </argument>
+            <argument name="formBlockType"     xsi:type="string">Magento\Payment\Block\Form</argument>
+            <argument name="infoBlockType"     xsi:type="string">Magento\Payment\Block\ConfigurableInfo</argument>
+            <argument name="valueHandlerPool"  xsi:type="object">OmnisSolutioPaymentGatewayValueHandlerPool</argument>
+            <argument name="commandPool"       xsi:type="object">OmnisSolutioPaymentGatewayCommandPool</argument>
+        </arguments>
+    </virtualType>
+
+    <!--
+    =========================================================
+    PLUGIN
+    =========================================================
+    -->
     <type name="Magento\Sales\Model\Order\Payment">
         <plugin name="omnissolutio_order_payment"
                 type="OmnisSolutio\PaymentGateway\Plugin\OrderPaymentPlugin"
