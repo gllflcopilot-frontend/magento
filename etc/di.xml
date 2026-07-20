@@ -177,6 +177,33 @@
 
     <!--
     =========================================================
+    DEDICATED LOGGER  (var/log/omnissolutio.log)
+    =========================================================
+    -->
+    <type name="OmnisSolutio\PaymentGateway\Logger\Handler">
+        <arguments>
+            <argument name="filesystem" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+        </arguments>
+    </type>
+
+    <type name="OmnisSolutio\PaymentGateway\Logger\Logger">
+        <arguments>
+            <argument name="name" xsi:type="string">omnissolutio</argument>
+            <argument name="handlers" xsi:type="array">
+                <item name="system" xsi:type="object">OmnisSolutio\PaymentGateway\Logger\Handler</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Route the gateway HTTP transport's debug output to omnissolutio.log -->
+    <type name="OmnisSolutio\PaymentGateway\Gateway\Http\Client\ApiClient">
+        <arguments>
+            <argument name="logger" xsi:type="object">OmnisSolutio\PaymentGateway\Logger\Logger</argument>
+        </arguments>
+    </type>
+
+    <!--
+    =========================================================
     PLUGIN
     =========================================================
     -->
