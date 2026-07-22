@@ -8,6 +8,12 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Payment\Gateway\Helper\SubjectReader;
 use Magento\Payment\Gateway\Request\BuilderInterface;
 
+/**
+ * Builds the refund request (Phase F).
+ *
+ * Amount is sent in MAJOR units matching the create-order contract
+ * (see WP class-gateway.php: "Do NOT convert to minor units").
+ */
 class RefundRequestBuilder implements BuilderInterface
 {
     public function build(array $buildSubject): array
@@ -25,9 +31,9 @@ class RefundRequestBuilder implements BuilderInterface
 
         return [
             'method'   => 'POST',
-            'endpoint' => '/payments/' . $paymentId . '/refund',
+            'endpoint' => '/api/v1/payin/payment/' . $paymentId . '/refund',
             'body'     => [
-                'amount' => (int) round($amount * 100),
+                'amount' => round((float) $amount, 2), // MAJOR units
                 'notes'  => ['reason' => 'Customer refund from Magento'],
             ],
         ];

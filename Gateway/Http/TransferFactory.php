@@ -13,18 +13,20 @@ class TransferFactory implements TransferFactoryInterface
 {
     public function __construct(
         private readonly TransferBuilder $transferBuilder,
-        private readonly Config $config
+        private readonly Config          $config
     ) {}
 
     public function create(array $request): TransferInterface
     {
         return $this->transferBuilder
             ->setMethod($request['method'])
-            ->setUri($this->config->getApiEndpoint() . $request['endpoint'])
+            ->setUri($this->config->getApiBaseUrl() . $request['endpoint'])
             ->setBody($request['body'] ?? [])
-            ->setHeaders(['Content-Type' => 'application/json', 'Accept' => 'application/json'])
-            ->setAuthUsername($this->config->getKeyId())
-            ->setAuthPassword($this->config->getKeySecret())
+            ->setHeaders([
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json',
+                'X-TenantID'   => $this->config->getTenantId(),
+            ])
             ->build();
     }
 }

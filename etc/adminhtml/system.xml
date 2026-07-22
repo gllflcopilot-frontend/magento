@@ -17,18 +17,35 @@
                     <label>Environment</label>
                     <source_model>OmnisSolutio\PaymentGateway\Model\Config\Source\Environment</source_model>
                 </field>
-                <field id="key_id" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Key ID</label>
-                    <comment>Your public API key — safe to expose to the frontend iframe.</comment>
-                </field>
-                <field id="key_secret" translate="label" type="obscure" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Key Secret</label>
+                <field id="key_secret" translate="label comment" type="obscure" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>API Secret (Key Secret)</label>
+                    <comment>Your HMAC signing secret (VITE_API_SECRET). Used server-side to sign every payin request — never sent to the browser.</comment>
                     <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
                 </field>
-                <field id="webhook_secret" translate="label comment" type="obscure" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="tenant_id" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Tenant ID</label>
+                    <comment>Value for the X-TenantID request header (e.g. TNT-00000213). Provided by Omnis Solutio.</comment>
+                </field>
+                <field id="pg_public_key" translate="label comment" type="textarea" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>PG Public Key</label>
+                    <comment><![CDATA[RSA public key used to wrap the per-request AES key. Paste the full PEM block <em>or</em> just the base64 body — either form is accepted.]]></comment>
+                </field>
+                <field id="webhook_secret" translate="label comment" type="obscure" sortOrder="65" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Webhook Secret</label>
-                    <comment>Used server-side to verify the HMAC signature of incoming webhook events.</comment>
+                    <comment>Used server-side to verify the HMAC signature of incoming webhook events (Phase E).</comment>
                     <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
+                </field>
+                <field id="evervault_team_id" translate="label comment" type="text" sortOrder="67" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Evervault Team ID</label>
+                    <comment>Public client-safe value forwarded to the checkout iframe (e.g. team_83699f3104e8).</comment>
+                </field>
+                <field id="evervault_app_id" translate="label comment" type="text" sortOrder="68" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Evervault App ID</label>
+                    <comment>Public client-safe value forwarded to the checkout iframe (e.g. app_0597d16048a0).</comment>
+                </field>
+                <field id="base_url" translate="label comment" type="text" sortOrder="69" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>API Base URL (Override)</label>
+                    <comment>Leave blank to use https://api.solutio.com. Set only if Omnis Solutio provides a custom endpoint.</comment>
                 </field>
                 <field id="payment_action" translate="label" type="select" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Payment Action</label>

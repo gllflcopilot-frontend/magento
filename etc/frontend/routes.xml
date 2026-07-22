@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:App/etc/routes.xsd">
+    <router id="standard">
+        <!--
+            frontName "omnissolutio" backs the Phase D storefront controllers:
+              /omnissolutio/order/create      → create the gateway order for the current order
+              /omnissolutio/payment/callback   → receive payment_id + signature from the iframe
+            Phase E's webhook controller (/omnissolutio/webhook) reuses this same route.
+        -->
+        <route id="omnissolutio" frontName="omnissolutio">
+            <module name="OmnisSolutio_PaymentGateway"/>
+        </route>
+    </router>
+</config>

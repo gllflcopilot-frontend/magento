@@ -9,110 +9,180 @@ use Magento\Framework\HTTP\Client\Curl;
 use Magento\Framework\Serialize\Serializer\Json;
 use OmnisSolutio\PaymentGateway\Logger\Logger;
 use OmnisSolutio\PaymentGateway\Model\Config;
+use OmnisSolutio\PaymentGateway\Model\Crypto;
 
+/**
+ * Thin HTTP wrapper for the Omnis Solutio payin API.
+ *
+ * Auth scheme (from WP class-gateway.php / class-crypto.php reference):
+ *   - All requests: Content-Type: application/json, X-TenantID: {tenantId}
+ *   - POST with body: body is AES-128-GCM encrypted + RSA-wrapped key + HMAC signed
+ *   - POST with empty body (cancel): plain empty POST, no encryption
+ *   - GET requests: no body, no signing
+ *   - NO Authorization / basic-auth header (upstream returns 500 if present)
+ *
+ * API paths (live: https://api.solutio.com):
+ *   POST /api/v1/payin/create/order          → createOrder()
+ *   GET  /api/v1/payin/payment/{ref}/status  → fetchPaymentStatus()
+ *   POST /api/v1/payin/order/{token}/cancel  → cancelOrder()
+ *   POST /api/v1/payin/payment/{ref}/refund  → refund()  [Phase F]
+ */
 class Client
 {
     private const TIMEOUT = 10;
 
     public function __construct(
-        private readonly Config      $config,
+        private readonly Config    $config,
         private readonly UrlProvider $urlProvider,
-        private readonly Curl        $curl,
-        private readonly Json        $json,
-        private readonly Logger      $logger
+        private readonly Curl      $curl,
+        private readonly Json      $json,
+        private readonly Crypto    $crypto,
+        private readonly Logger    $logger
     ) {}
 
     /**
-     * POST /orders — creates a gateway order before the iframe opens.
-     * Pass the quote/order increment ID as $idempotencyKey.
+     * POST /api/v1/payin/create/order — creates a gateway order before the iframe opens.
+     * The full WP-matched payload (orderRef, amount in MAJOR units, customer address, etc.)
+     * must be pre-built by the caller (Controller/Order/Create or InitializeRequestBuilder).
+     * Pass the order increment ID as $idempotencyKey.
      */
-    public function createOrder(array $data, string $idempotencyKey = '', int $storeId = null): array
+    public function createOrder(array $payload, string $idempotencyKey = '', int $storeId = null): array
     {
-        return $this->request('POST', '/orders', $data, $idempotencyKey, $storeId);
+        return $this->postEncrypted('/api/v1/payin/create/order', $payload, $idempotencyKey, $storeId);
     }
 
     /**
-     * GET /payments/{id} — server-side re-verification after iframe completes.
+     * GET /api/v1/payin/payment/{paymentRef}/status — server-side re-verification.
+     * Called from the Callback controller and the capture gateway command.
      */
+    public function fetchPaymentStatus(string $paymentRef, int $storeId = null): array
+    {
+        return $this->get('/api/v1/payin/payment/' . $paymentRef . '/status', $storeId);
+    }
+
+    /** Alias used by the Phase B capture flow. */
     public function fetchPayment(string $paymentId, int $storeId = null): array
     {
-        return $this->request('GET', '/payments/' . $paymentId, [], '', $storeId);
+        return $this->fetchPaymentStatus($paymentId, $storeId);
     }
 
     /**
-     * POST /payments/{id}/refund — partial or full refund.
-     * Pass the credit memo increment ID as $idempotencyKey.
+     * POST /api/v1/payin/order/{token}/cancel — cancels an unpaid gateway order.
+     * Empty body: no encryption needed.
      */
-    public function refund(string $paymentId, array $data, string $idempotencyKey = '', int $storeId = null): array
+    public function cancelOrder(string $gatewayOrderToken, int $storeId = null): array
     {
-        return $this->request('POST', '/payments/' . $paymentId . '/refund', $data, $idempotencyKey, $storeId);
+        return $this->postEmpty('/api/v1/payin/order/' . $gatewayOrderToken . '/cancel', $storeId);
     }
 
     /**
-     * POST /orders/{id}/cancel — cancels an unpaid gateway order.
+     * POST /api/v1/payin/payment/{ref}/refund — partial or full refund (Phase F).
+     * Amount in MAJOR units. Pass the credit memo increment ID as $idempotencyKey.
      */
-    public function cancelOrder(string $gatewayOrderId, int $storeId = null): array
+    public function refund(string $paymentRef, array $data, string $idempotencyKey = '', int $storeId = null): array
     {
-        return $this->request('POST', '/orders/' . $gatewayOrderId . '/cancel', [], '', $storeId);
+        return $this->postEncrypted('/api/v1/payin/payment/' . $paymentRef . '/refund', $data, $idempotencyKey, $storeId);
     }
 
-    private function request(string $method, string $path, array $body, string $idempotencyKey, ?int $storeId): array
+    // ─────────────────────────────────────────────────────────────────────────
+    // Internals
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function postEncrypted(string $path, array $payload, string $idempotencyKey, ?int $storeId): array
     {
         $url = $this->urlProvider->getBaseUrl($storeId) . $path;
 
-        $headers = ['Content-Type' => 'application/json', 'Accept' => 'application/json'];
-        if ($idempotencyKey !== '') {
-            $headers['Idempotency-Key'] = $idempotencyKey;
-        }
-
         try {
-            $this->curl->setHeaders($headers);
-            $this->curl->setCredentials(
-                $this->config->getKeyId($storeId),
+            $encrypted = $this->crypto->buildEncryptedRequest(
+                $payload,
+                $this->config->getPgPublicKey($storeId),
                 $this->config->getKeySecret($storeId)
             );
-            $this->curl->setTimeout(self::TIMEOUT);
 
-            if ($method === 'GET') {
-                $this->curl->get($url);
-            } else {
-                $this->curl->post($url, $this->json->serialize($body));
+            $headers = $this->baseHeaders($storeId);
+            if ($idempotencyKey !== '') {
+                $headers['Idempotency-Key'] = $idempotencyKey;
             }
+
+            $this->curl->setHeaders($headers);
+            $this->curl->setTimeout(self::TIMEOUT);
+            $this->curl->post($url, $this->json->serialize($encrypted));
 
             $httpStatus = $this->curl->getStatus();
             $response   = $this->json->unserialize($this->curl->getBody());
         } catch (\Exception $e) {
-            $this->logger->error('OmnisSolutio API connection failed', [
-                'method' => $method,
-                'path'   => $path,
-                'error'  => $e->getMessage(),
-            ]);
+            $this->logger->error('OmnisSolutio API POST failed', ['path' => $path, 'error' => $e->getMessage()]);
             throw new LocalizedException(__('Payment gateway is unreachable. Please try again.'), $e);
         }
 
         if ($this->config->isDebug($storeId)) {
-            $this->logger->debug('OmnisSolutio API', [
-                'method'   => $method,
-                'url'      => $url,
-                'status'   => $httpStatus,
-                'body'     => $body,
-                'response' => $response,
-            ]);
+            $this->logger->debug('OmnisSolutio API POST', ['url' => $url, 'status' => $httpStatus]);
         }
 
         if ($httpStatus >= 400) {
-            $errorMessage = is_array($response)
-                ? ($response['error']['description'] ?? $response['message'] ?? 'API error')
+            $msg = is_array($response)
+                ? ($response['message'] ?? $response['error']['description'] ?? 'API error')
                 : 'API error';
-            $this->logger->warning('OmnisSolutio API error response', [
-                'method' => $method,
-                'path'   => $path,
-                'status' => $httpStatus,
-                'error'  => $errorMessage,
-            ]);
-            throw new LocalizedException(__('Payment gateway error: %1', $errorMessage));
+            $this->logger->warning('OmnisSolutio API error', ['path' => $path, 'status' => $httpStatus, 'msg' => $msg]);
+            throw new LocalizedException(__('Payment gateway error: %1', $msg));
         }
 
         return is_array($response) ? $response : [];
+    }
+
+    private function get(string $path, ?int $storeId): array
+    {
+        $url = $this->urlProvider->getBaseUrl($storeId) . $path;
+
+        try {
+            $this->curl->setHeaders($this->baseHeaders($storeId));
+            $this->curl->setTimeout(self::TIMEOUT);
+            $this->curl->get($url);
+
+            $httpStatus = $this->curl->getStatus();
+            $response   = $this->json->unserialize($this->curl->getBody());
+        } catch (\Exception $e) {
+            $this->logger->error('OmnisSolutio API GET failed', ['path' => $path, 'error' => $e->getMessage()]);
+            throw new LocalizedException(__('Payment gateway is unreachable. Please try again.'), $e);
+        }
+
+        if ($this->config->isDebug($storeId)) {
+            $this->logger->debug('OmnisSolutio API GET', ['url' => $url, 'status' => $httpStatus]);
+        }
+
+        if ($httpStatus >= 400) {
+            $msg = is_array($response) ? ($response['message'] ?? 'API error') : 'API error';
+            throw new LocalizedException(__('Payment gateway error: %1', $msg));
+        }
+
+        return is_array($response) ? $response : [];
+    }
+
+    private function postEmpty(string $path, ?int $storeId): array
+    {
+        $url = $this->urlProvider->getBaseUrl($storeId) . $path;
+
+        try {
+            $this->curl->setHeaders($this->baseHeaders($storeId));
+            $this->curl->setTimeout(self::TIMEOUT);
+            $this->curl->post($url, '{}');
+
+            $httpStatus = $this->curl->getStatus();
+            $response   = $this->json->unserialize($this->curl->getBody());
+        } catch (\Exception $e) {
+            $this->logger->error('OmnisSolutio API POST (empty) failed', ['path' => $path, 'error' => $e->getMessage()]);
+            throw new LocalizedException(__('Payment gateway is unreachable. Please try again.'), $e);
+        }
+
+        return is_array($response) ? $response : [];
+    }
+
+    private function baseHeaders(?int $storeId): array
+    {
+        return [
+            'Content-Type' => 'application/json',
+            'Accept'       => 'application/json',
+            'X-TenantID'   => $this->config->getTenantId($storeId),
+        ];
     }
 }

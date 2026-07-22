@@ -8,6 +8,13 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Payment\Gateway\Helper\SubjectReader;
 use Magento\Payment\Gateway\Request\BuilderInterface;
 
+/**
+ * Builds the server-side payment re-verification request (Phase D, step 5).
+ *
+ * Called by the capture gateway command after the iframe posts back a
+ * payment_id. The API returns the full payment object; CaptureHandler
+ * validates and stores it.
+ */
 class CaptureRequestBuilder implements BuilderInterface
 {
     public function build(array $buildSubject): array
@@ -24,7 +31,7 @@ class CaptureRequestBuilder implements BuilderInterface
 
         return [
             'method'   => 'GET',
-            'endpoint' => '/payments/' . $paymentId,
+            'endpoint' => '/api/v1/payin/payment/' . $paymentId . '/status',
             'body'     => [],
         ];
     }

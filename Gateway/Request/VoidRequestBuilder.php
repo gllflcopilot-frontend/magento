@@ -8,6 +8,10 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Payment\Gateway\Helper\SubjectReader;
 use Magento\Payment\Gateway\Request\BuilderInterface;
 
+/**
+ * Cancels an unpaid gateway order (Phase G / modal dismiss).
+ * Cancel is a POST with no body — ApiClient sends only X-TenantID header.
+ */
 class VoidRequestBuilder implements BuilderInterface
 {
     public function build(array $buildSubject): array
@@ -18,13 +22,13 @@ class VoidRequestBuilder implements BuilderInterface
 
         if (!$gatewayOrderId) {
             throw new LocalizedException(
-                __('Gateway order ID is missing. Cannot void payment.')
+                __('Gateway order token is missing. Cannot void payment.')
             );
         }
 
         return [
             'method'   => 'POST',
-            'endpoint' => '/orders/' . $gatewayOrderId . '/cancel',
+            'endpoint' => '/api/v1/payin/order/' . $gatewayOrderId . '/cancel',
             'body'     => [],
         ];
     }

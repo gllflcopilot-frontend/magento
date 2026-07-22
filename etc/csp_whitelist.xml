@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<csp_whitelist xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Csp:etc/csp_whitelist.xsd">
+    <policies>
+        <!--
+            The checkout app (React SPA iframe) is served from Magento's own static files,
+            so no external script-src is needed for it.
+
+            The checkout app itself fetches from api.solutio.com, so connect-src is needed.
+            If Evervault's JS is loaded inside the iframe, evervault.com needs frame-src/connect-src.
+        -->
+        <policy id="script-src">
+            <values>
+                <!-- Evervault SDK loaded inside the checkout iframe -->
+                <value id="evervault_js" type="host">https://js.evervault.com</value>
+            </values>
+        </policy>
+        <policy id="frame-src">
+            <values>
+                <!-- Evervault input cage iframes rendered inside our checkout app -->
+                <value id="evervault_input" type="host">https://inputs.evervault.com</value>
+            </values>
+        </policy>
+        <policy id="connect-src">
+            <values>
+                <!-- All API calls made by the checkout app (React SDK) from inside the iframe -->
+                <value id="omnissolutio_api" type="host">https://api.solutio.com</value>
+                <!-- Evervault relay for card encryption -->
+                <value id="evervault_relay" type="host">https://relay.evervault.com</value>
+                <value id="evervault_api"   type="host">https://api.evervault.com</value>
+            </values>
+        </policy>
+    </policies>
+</csp_whitelist>

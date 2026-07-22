@@ -12,9 +12,29 @@
                 <order_status>processing</order_status>
                 <allowspecific>0</allowspecific>
                 <debug>0</debug>
+
+                <!-- Platform-level public defaults — overridable per store in admin. -->
+                <tenant_id>TNT-00000213</tenant_id>
+                <evervault_team_id>team_83699f3104e8</evervault_team_id>
+                <evervault_app_id>app_0597d16048a0</evervault_app_id>
+                <!--
+                    pg_public_key default — bare base64 body (PEM headers added at runtime).
+                    Replace with your own key in Stores > Configuration if it changes.
+                -->
+                <pg_public_key>MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZMJQJEy6c7I8hDlsyQOh+qG5UQvO9pF40D2sw5t1dBsFgOWVppjPb2YoV70xXWpkVqxWAyY5CEM84Y1z+s3pDdopKEH8rTBPViBOaBFp0wNTzpPsZ+9jU40o2tHyhIE0p/+hhbVfQHfopZ1vlEx5b2kkkFls3NvMPnQX9MLE4BvdgDZoet+z1RxlQKd3CCxRVUhBcdeby8mqIOCHZRKISuPEgnXabEV47NCdKI6DIBT/sNmKC1bHwR2wLgD4FIgEOb6F9tPGVXm/r29+v+In01qpnveMT8WrKtf8Ysa6bTuduEMrjw81zQUDOVwmVfI/kpZ78wKhfwajxOkzsHyWwIDAQAB</pg_public_key>
+                <!-- base_url: leave empty to use https://api.solutio.com -->
+                <base_url></base_url>
+
+                <!-- Gateway capability flags -->
                 <is_gateway>1</is_gateway>
                 <can_use_checkout>1</can_use_checkout>
                 <can_use_internal>0</can_use_internal>
+                <!--
+                    can_initialize=1 routes placeOrder through the initialize command,
+                    landing the order in pending_payment BEFORE the iframe opens.
+                    This is required for the order-first flow (Phase D, step 2).
+                -->
+                <can_initialize>1</can_initialize>
                 <can_authorize>1</can_authorize>
                 <can_capture>1</can_capture>
                 <can_refund>1</can_refund>
