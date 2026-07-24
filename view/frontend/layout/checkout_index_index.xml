@@ -5,7 +5,7 @@
         <referenceBlock name="head.additional">
             <block class="Magento\Framework\View\Element\Template"
                    name="omnissolutio.modal.css"
-                   template="OmnisSolutio_PaymentGateway::modal_css.html"/>
+                   template="OmnisSolutio_PaymentGateway::modal_css.phtml"/>
         </referenceBlock>
         <referenceBlock name="checkout.root">
             <arguments>

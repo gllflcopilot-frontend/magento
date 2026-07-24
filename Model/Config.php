@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OmnisSolutio\PaymentGateway\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Store\Model\ScopeInterface;
 
 class Config
@@ -15,7 +16,8 @@ class Config
     public const API_BASE_URL = 'https://api.solutio.com';
 
     public function __construct(
-        private readonly ScopeConfigInterface $scopeConfig
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly EncryptorInterface $encryptor
     ) {}
 
     public function isActive(int $storeId = null): bool
@@ -53,11 +55,13 @@ class Config
     /** The HMAC signing secret (= VITE_API_SECRET in the WP env file). */
     public function getKeySecret(int $storeId = null): string
     {
-        return (string) $this->scopeConfig->getValue(
+        $value = (string) $this->scopeConfig->getValue(
             self::XML_PATH_PREFIX . 'key_secret',
             ScopeInterface::SCOPE_STORE,
             $storeId
         );
+
+        return $value !== '' ? $this->encryptor->decrypt($value) : '';
     }
 
     public function getWebhookSecret(int $storeId = null): string
